@@ -1,8 +1,7 @@
 import os
 from typing import Dict, List
 
-from google import genai
-from google.genai import types
+import anthropic
 
 
 def _build_prompt_markdown_table(critical_list: List[Dict]) -> str:
@@ -41,32 +40,30 @@ def _build_prompt_markdown_table(critical_list: List[Dict]) -> str:
 """.strip()
 
 
-def explain_vulnerabilities_with_gemini_markdown_table(
+def explain_vulnerabilities_with_claude_markdown_table(
     critical_list: List[Dict],
-    model: str = "gemini-2.5-flash",
+    model: str = "claude-sonnet-4-6",
 ) -> str:
     """
-    scanner.py 에서 받아온 critical 취약 컴포넌트 리스트를 Gemini에 보내서
+    scanner.py 에서 받아온 critical 취약 컴포넌트 리스트를 Claude에 보내서
     설명 및 조치 방법이 포함된 '마크다운 테이블 문자열'로 반환.
     """
     if not critical_list:
         return ""
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        raise RuntimeError("GEMINI_API_KEY 환경 변수가 설정되어 있지 않습니다.")
+        raise RuntimeError("ANTHROPIC_API_KEY 환경 변수가 설정되어 있지 않습니다.")
 
-    client = genai.Client(api_key=api_key)
+    client = anthropic.Anthropic(api_key=api_key)
     prompt = _build_prompt_markdown_table(critical_list)
 
-    response = client.models.generate_content(
+    message = client.messages.create(
         model=model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.2,
-            max_output_tokens=2048,
-        ),
+        max_tokens=2048,
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
     )
 
-    return (response.text or "").strip()
-
+    return (message.content[0].text or "").strip()

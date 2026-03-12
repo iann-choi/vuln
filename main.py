@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from auth import BlackDuckAuth
 from scanner import BlackDuckScanner
-from gemini_client import explain_vulnerabilities_with_gemini_markdown_table
+from claude_client import explain_vulnerabilities_with_claude_markdown_table
 
 def main():
     # .env 파일 로드
@@ -35,7 +35,7 @@ def main():
         return
 
     print("\nGemini API를 호출하여 마크다운 테이블 리포트를 생성합니다...")
-    report_md = explain_vulnerabilities_with_gemini_markdown_table(critical_list)
+    report_md = explain_vulnerabilities_with_claude_markdown_table(critical_list)
     print("\n=== Gemini Markdown Report ===\n")
     print(report_md)
 
