@@ -16,13 +16,17 @@ def _build_blocks(item: Dict, item_id: str) -> list:
     description = item.get("Description", "")
     short_term = item.get("ShortTermRemediation", "")
     long_term = item.get("LongTermRemediation", "")
+    last_scanned = item.get("Last_Scanned", "")
+    severity = item.get("Severity", "")
+    cvss_score = item.get("CVSS_Score", "")
+    workaround = item.get("Workaround", "")
 
     return [
         {
             "type": "header",
             "text": {
                 "type": "plain_text",
-                "text": f"🔴 {vuln}",
+                "text": f"🔴 [VC] {project} 컴포넌트({component} {component_version}) 취약점({vuln})",
             },
         },
         {
@@ -36,8 +40,24 @@ def _build_blocks(item: Dict, item_id: str) -> list:
             "type": "section",
             "text": {
                 "type": "mrkdwn",
+                "text": f"*🔍 취약점 발견 경위*\n{last_scanned} 시에 SCA 도구(블랙덕) 점검에서 발견",
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
                 "text": f"*📋 설명*\n{description}",
             },
+        },
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": "*CVSS 점수*"},
+                {"type": "mrkdwn", "text": "*위험도*"},
+                {"type": "mrkdwn", "text": f"🔴 *{cvss_score}*"},
+                {"type": "mrkdwn", "text": f"🔴 *{severity}*"},
+            ],
         },
         {
             "type": "section",
@@ -45,6 +65,13 @@ def _build_blocks(item: Dict, item_id: str) -> list:
                 {"type": "mrkdwn", "text": f"*⚡ Short-term*\n{short_term}"},
                 {"type": "mrkdwn", "text": f"*🔭 Long-term*\n{long_term}"},
             ],
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*🛠️ Workaround*\n{workaround}",
+            },
         },
         {
             "type": "actions",

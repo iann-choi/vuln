@@ -38,7 +38,7 @@ def main():
 
     # 5. Claude + NVD로 취약점 분석
     print("\nClaude API를 호출하여 취약점을 분석합니다...")
-    structured = explain_vulnerabilities_structured(critical_list)
+    structured = explain_vulnerabilities_structured(critical_list, bd_auth)
 
     # 6. 콘솔에 마크다운 테이블 출력
     print("\n=== Claude Analysis Report ===\n")
