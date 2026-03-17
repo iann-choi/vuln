@@ -6,6 +6,40 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 
+def _source_label(vuln_id: str) -> str:
+    """취약점 ID 접두사로 출처 레이블 반환."""
+    uid = vuln_id.upper()
+    if uid.startswith("CVE-"):
+        return "NVD / CVE"
+    if uid.startswith("GHSA-"):
+        return "GitHub Advisory"
+    if uid.startswith("BDSA-"):
+        return "BlackDuck Advisory"
+    return "Unknown"
+
+
+def _build_vuln_id_table(vuln_ids: list) -> str:
+    """취약점 ID 목록을 코드블록 테이블 문자열로 변환 (ASCII only, 정렬 보장)."""
+    if not vuln_ids:
+        return ""
+
+    rows = [(vid, _source_label(vid)) for vid in vuln_ids]
+    id_width = max(len(r[0]) for r in rows)
+    src_width = max(len(r[1]) for r in rows)
+    id_width = max(id_width, len("ID"))
+    src_width = max(src_width, len("Source"))
+
+    sep_top    = f"┌{'─' * (id_width + 2)}┬{'─' * (src_width + 2)}┐"
+    sep_header = f"├{'─' * (id_width + 2)}┼{'─' * (src_width + 2)}┤"
+    sep_bottom = f"└{'─' * (id_width + 2)}┴{'─' * (src_width + 2)}┘"
+    header     = f"│ {'ID':<{id_width}} │ {'Source':<{src_width}} │"
+
+    data_rows = [f"│ {vid:<{id_width}} │ {src:<{src_width}} │" for vid, src in rows]
+
+    lines = [sep_top, header, sep_header] + data_rows + [sep_bottom]
+    return "```\n" + "\n".join(lines) + "\n```"
+
+
 def _build_blocks(item: Dict, item_id: str) -> list:
     """취약점 항목 1개를 Block Kit 블록 리스트로 변환."""
     vuln = item.get("Vulnerability", "")
@@ -20,6 +54,7 @@ def _build_blocks(item: Dict, item_id: str) -> list:
     severity = item.get("Severity", "")
     cvss_score = item.get("CVSS_Score", "")
     workaround = item.get("Workaround", "")
+    vuln_ids = item.get("VulnIDs", [vuln])
 
     return [
         {
@@ -52,18 +87,18 @@ def _build_blocks(item: Dict, item_id: str) -> list:
         },
         {
             "type": "section",
-            "fields": [
-                {"type": "mrkdwn", "text": "*CVSS 점수*"},
-                {"type": "mrkdwn", "text": "*위험도*"},
-                {"type": "mrkdwn", "text": f"🔴 *{cvss_score}*"},
-                {"type": "mrkdwn", "text": f"🔴 *{severity}*"},
-            ],
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*🔖 관련 취약점 ID*\n{_build_vuln_id_table(vuln_ids)}",
+            },
         },
         {
             "type": "section",
             "fields": [
-                {"type": "mrkdwn", "text": f"*⚡ Short-term*\n{short_term}"},
-                {"type": "mrkdwn", "text": f"*🔭 Long-term*\n{long_term}"},
+                {"type": "mrkdwn", "text": f"*CVSS 점수*\n🔴 {cvss_score}"},
+                {"type": "mrkdwn", "text": f"*위험도*\n🔴 {severity}"},
+                {"type": "mrkdwn", "text": f"*단기 조치 (Short-term)*\n{short_term}"},
+                {"type": "mrkdwn", "text": f"*장기 조치 (Long-term)*\n{long_term}"},
             ],
         },
         {

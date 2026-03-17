@@ -32,8 +32,15 @@ class BlackDuckScanner:
             if isinstance(total, int) and offset >= total:
                 break
 
-    def get_critical_components_in_group(self, group_id):
-        """특정 프로젝트 그룹 내의 Critical(만) 취약 컴포넌트 리스트 추출"""
+    def get_critical_components_in_group(self, group_id, severities=None, project_filter=None):
+        """특정 프로젝트 그룹 내의 취약 컴포넌트 리스트 추출.
+        severities: 포함할 심각도 목록 (기본: ["CRITICAL"])
+        project_filter: 특정 프로젝트 이름으로 필터링 (기본: 전체)
+        """
+        if severities is None:
+            severities = ["CRITICAL"]
+        severities = [s.upper() for s in severities]
+
         results = []
         seen = set()
 
@@ -45,6 +52,10 @@ class BlackDuckScanner:
 
             for project in projects:
                 project_name = project.get("name", "unknown")
+
+                if project_filter and project_name.lower() != project_filter.lower():
+                    continue
+
                 project_href = (project.get("_meta") or {}).get("href")
                 if not project_href:
                     continue
@@ -69,9 +80,7 @@ class BlackDuckScanner:
                     vwr = item.get("vulnerabilityWithRemediation") or {}
                     severity = (vwr.get("severity") or "").upper()
 
-                    # CRITICAL만
-                    if severity != "CRITICAL":
-                    # if severity not in ["CRITICAL", "HIGH"]:
+                    if severity not in severities:
                         continue
                     
                     key = (
