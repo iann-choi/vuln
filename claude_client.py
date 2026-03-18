@@ -169,11 +169,12 @@ def explain_vulnerabilities_structured(
     for original, enriched, result in zip(critical_list, enriched_list, parsed):
         result["Last_Scanned"] = original.get("Last_Scanned") or ""
         result["Severity"] = original.get("Severity", "")
-        # CVSS는 NVD 값 우선, 없으면 BlackDuck Advisory 값으로 fallback
+        # CVSS는 BlackDuck overall 우선, 없으면 NVD base score로 fallback
         result["CVSS_Score"] = (
-            enriched.get("nvd", {}).get("cvss_score")
+            original.get("CVSS_Score")
+            or enriched.get("nvd", {}).get("cvss_score")
             or enriched.get("blackduck", {}).get("cvss_score")
-            or original.get("CVSS_Score", "")
+            or ""
         )
         result["Workaround"] = result.get("Workaround", "")
         # 관련 취약점 ID 목록 (메인 ID + OSV aliases, 중복 제거)

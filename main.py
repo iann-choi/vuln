@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from auth import BlackDuckAuth
 from scanner import BlackDuckScanner
 from claude_client import explain_vulnerabilities_structured, format_as_markdown_table
-from slack_client import send_vulnerabilities_to_slack
+from slack_client import send_vulnerabilities_to_slack, preview_vulnerabilities, create_vulnerability_canvas
 
 
 def print_scan_results(results: list):
@@ -34,6 +34,8 @@ def print_scan_results(results: list):
 def main():
     parser = argparse.ArgumentParser(description="BlackDuck 취약점 분석 도구")
     parser.add_argument("--scan-only", action="store_true", help="취약 컴포넌트 목록만 출력 (Claude/Slack 호출 안 함)")
+    parser.add_argument("--dry-run", action="store_true", help="Claude 분석까지 실행 후 Slack 전송 없이 Block Kit 페이로드를 콘솔에 출력")
+    parser.add_argument("--canvas", action="store_true", help="Slack Canvas 문서로 리포트 생성 (Block Kit 메시지 대신)")
     parser.add_argument("--project", type=str, default=None, help="특정 프로젝트 이름으로 필터링 (기본: 그룹 전체)")
     parser.add_argument(
         "--severity",
@@ -95,7 +97,16 @@ def main():
     print("\n=== Claude Analysis Report ===\n")
     print(format_as_markdown_table(structured))
 
-    # 7. Slack Block Kit으로 전송
+    # 7. 전송
+    if args.dry_run:
+        preview_vulnerabilities(structured)
+        return
+
+    if args.canvas:
+        print("\nSlack Canvas 리포트를 생성합니다...")
+        create_vulnerability_canvas(structured)
+        return
+
     print("\nSlack으로 취약점 리포트를 전송합니다...")
     send_vulnerabilities_to_slack(structured)
     print("Slack 전송 완료.")
