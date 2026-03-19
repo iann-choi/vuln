@@ -5,10 +5,11 @@ import requests
 NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
 
-def fetch_nvd_cve(cve_id: str) -> dict:
+def fetch_nvd_cve(cve_id: str, max_retries: int = 3) -> dict:
     """
     NVD API에서 CVE 상세 정보를 조회하여 반환.
     BDSA- 등 NVD에 없는 ID는 빈 dict 반환.
+    429 응답 시 exponential backoff으로 재시도.
     """
     if not cve_id.upper().startswith("CVE-"):
         return {}
@@ -18,26 +19,39 @@ def fetch_nvd_cve(cve_id: str) -> dict:
     if api_key:
         headers["apiKey"] = api_key
 
-    try:
-        res = requests.get(
-            NVD_API_BASE,
-            params={"cveId": cve_id},
-            headers=headers,
-            timeout=10,
-        )
-        res.raise_for_status()
-        data = res.json()
+    for attempt in range(max_retries):
+        try:
+            res = requests.get(
+                NVD_API_BASE,
+                params={"cveId": cve_id},
+                headers=headers,
+                timeout=10,
+            )
 
-        vulnerabilities = data.get("vulnerabilities", [])
-        if not vulnerabilities:
+            if res.status_code == 429:
+                wait = 30 * (2 ** attempt)
+                print(f"  [NVD] {cve_id} rate limit 초과, {wait}초 후 재시도 ({attempt + 1}/{max_retries})...")
+                time.sleep(wait)
+                continue
+
+            res.raise_for_status()
+            data = res.json()
+
+            vulnerabilities = data.get("vulnerabilities", [])
+            if not vulnerabilities:
+                return {}
+
+            cve = vulnerabilities[0].get("cve", {})
+            return _parse_cve(cve)
+
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"  [NVD] {cve_id} 조회 실패: {e}, 재시도 중...")
+            else:
+                print(f"  [NVD] {cve_id} 조회 실패: {e}")
             return {}
 
-        cve = vulnerabilities[0].get("cve", {})
-        return _parse_cve(cve)
-
-    except Exception as e:
-        print(f"  [NVD] {cve_id} 조회 실패: {e}")
-        return {}
+    return {}
 
 
 def _parse_cve(cve: dict) -> dict:
@@ -98,12 +112,16 @@ def _extract_affected_versions(configurations: list) -> list:
     return results
 
 
-def enrich_with_nvd(critical_list: list, delay: float = 0.6) -> list:
+def enrich_with_nvd(critical_list: list, delay: float = None) -> list:
     """
     취약점 목록에 NVD 정보를 추가하여 반환.
     NVD API rate limit 대응을 위해 요청 간 delay(초) 적용.
-    (API 키 없을 때 30초당 5건 제한 → 약 0.6초 간격)
+    - API 키 없음: 30초당 5건 제한 → 6초 간격
+    - API 키 있음: 30초당 50건 제한 → 0.6초 간격
     """
+    if delay is None:
+        delay = 0.6 if os.getenv("NVD_API_KEY") else 6.0
+
     enriched = []
     seen_cves = {}
 

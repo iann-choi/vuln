@@ -32,7 +32,7 @@ def _fetch_by_id(vuln_id: str) -> dict:
         res.raise_for_status()
         return _parse_osv(res.json())
     except Exception as e:
-        print(f"  [OSV] {vuln_id} ID 조회 실패: {e}")
+        print(f"  [Open Source Vulnerabilities] {vuln_id} ID 조회 실패: {e}")
         return {}
 
 
@@ -50,7 +50,7 @@ def _fetch_by_package(component: str, version: str) -> list:
         res.raise_for_status()
         return [_parse_osv(v) for v in res.json().get("vulns", [])]
     except Exception as e:
-        print(f"  [OSV] {component} {version} 패키지 조회 실패: {e}")
+        print(f"  [Open Source Vulnerabilities] {component} {version} 패키지 조회 실패: {e}")
         return []
 
 
@@ -90,7 +90,7 @@ def enrich_with_osv(critical_list: List[Dict]) -> List[Dict]:
         if cache_key in seen:
             osv_info = seen[cache_key]
         else:
-            print(f"  [OSV] {vuln_id} ({component} {version}) 조회 중...")
+            print(f"  [Open Source Vulnerabilities] {vuln_id} ({component} {version}) 조회 중...")
             osv_info = fetch_osv(vuln_id, component, version)
             seen[cache_key] = osv_info
 

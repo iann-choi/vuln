@@ -217,7 +217,7 @@ def create_vulnerability_canvas(
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"📄 *취약점 분석 리포트 생성 완료*\n{title}\n{link_text}",
+                        "text": f"📄 *Component 취약점 분석 리포트 생성 완료*\n{title}\n{link_text}",
                     },
                 }
             ],
