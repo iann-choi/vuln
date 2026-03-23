@@ -85,7 +85,28 @@ GITHUB_TOKEN="<GitHub Personal Access Token>"
 
 ---
 
-## 3. 기동 방법
+## 3. 디렉토리 구조
+
+```
+vuln/
+├── main.py                      # 진입점 (CLI 옵션 처리 및 전체 흐름 제어)
+├── scanner.py                   # BlackDuck 취약점 스캔 및 데이터 수집
+├── claude_client.py             # Claude AI 취약점 분석 요청
+├── slack_client.py              # Slack 메시지 / Canvas 전송
+├── auth.py                      # BlackDuck 인증 처리
+├── nvd_client.py                # NVD API 조회
+├── cisa_client.py               # CISA KEV 조회
+├── osv_client.py                # OSV API 조회
+├── github_advisory_client.py    # GitHub Advisory DB 조회
+├── blackduck_advisory_client.py # BlackDuck Advisory 조회
+├── pyproject.toml               # 프로젝트 의존성 정의
+├── uv.lock                      # 의존성 lock 파일
+└── .env                         # 환경변수 (git 제외)
+```
+
+---
+
+## 4. 기동 방법
 
 ### 사전 준비
 
