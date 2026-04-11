@@ -9,6 +9,7 @@ from blackduck_advisory_client import enrich_with_blackduck
 from osv_client import enrich_with_osv
 from cisa_client import enrich_with_cisa
 from github_advisory_client import enrich_with_github
+from epss_client import enrich_with_epss
 
 
 def _build_prompt(enriched_list: List[Dict]) -> str:
@@ -19,6 +20,7 @@ def _build_prompt(enriched_list: List[Dict]) -> str:
         osv = item.get("osv") or {}
         cisa = item.get("cisa") or {}
         gh = item.get("github") or {}
+        epss = item.get("epss") or {}
         affected = nvd.get("affected_versions", [])
 
         version_ranges = []
@@ -51,6 +53,9 @@ def _build_prompt(enriched_list: List[Dict]) -> str:
         cisa_exploited = "예" if cisa.get("actively_exploited") else "아니오"
         cisa_ransomware = cisa.get("ransomware_use", "Unknown")
         cisa_due_date = cisa.get("due_date", "")
+        epss_score = epss.get("epss")
+        epss_percentile = epss.get("percentile")
+        epss_str = f"{epss_score:.3f} ({epss_percentile * 100:.1f} 퍼센타일)" if epss_score is not None else "N/A"
         gh_severity = gh.get("severity", "")
         gh_fix_versions = ", ".join(gh.get("fix_versions", [])) or "없음"
         gh_affected = "; ".join(
@@ -69,6 +74,7 @@ def _build_prompt(enriched_list: List[Dict]) -> str:
             f"CISA_KEV_Exploited={cisa_exploited}, "
             f"CISA_Ransomware={cisa_ransomware}, "
             f"CISA_DueDate={cisa_due_date or '없음'}, "
+            f"EPSS_Score={epss_str}, "
             f"NVD_Description={nvd_desc or '없음'}, "
             f"BD_Description={bd_desc or '없음'}, "
             f"BD_ShortTerm_Version={bd_short or 'not available at this time'}, "
@@ -227,6 +233,8 @@ def _restore_fields(results: List[Dict], originals: List[Dict], enriched: List[D
             or ""
         )
         result["Workaround"] = result.get("Workaround", "")
+        result["cisa"] = enriched_item.get("cisa") or {}
+        result["epss"] = enriched_item.get("epss") or {}
         main_id = original.get("Vulnerability", "")
         osv_aliases = enriched_item.get("osv", {}).get("aliases", [])
         seen = {main_id}
@@ -266,6 +274,9 @@ def explain_vulnerabilities_structured(
 
     print("GitHub Advisory DB에서 취약점 정보를 조회 중...")
     enriched_list = enrich_with_github(enriched_list)
+
+    print("EPSS 점수를 조회 중...")
+    enriched_list = enrich_with_epss(enriched_list)
 
     client = anthropic.Anthropic(api_key=api_key)
     all_results = []

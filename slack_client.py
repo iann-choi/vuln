@@ -40,6 +40,54 @@ def _group_by_component(structured_list: List[Dict]) -> List[List[Dict]]:
     return list(groups.values())
 
 
+def _exploitation_risk_md(item: Dict) -> str:
+    """CVE별 악용 위험 섹션 마크다운 생성."""
+    cisa = item.get("cisa") or {}
+    epss = item.get("epss") or {}
+    vuln_id = item.get("Vulnerability", "")
+
+    if not vuln_id.upper().startswith("CVE-"):
+        verdict = "⚪ 측정 불가"
+        kev_str = "-"
+        ransomware_str = "-"
+        epss_str = "-"
+        due_date_str = "-"
+    else:
+        kev = cisa.get("actively_exploited", False)
+        due_date = cisa.get("due_date", "")
+        epss_score = epss.get("epss")
+        epss_percentile = epss.get("percentile")
+
+        if kev and epss_score is not None and epss_score >= 0.7:
+            verdict = "🔴 최우선 긴급"
+        elif kev:
+            verdict = "🔴 긴급"
+        elif epss_score is not None and epss_score >= 0.7:
+            verdict = "🟠 높음"
+        elif epss_score is not None and epss_score >= 0.3:
+            verdict = "🟡 중간"
+        elif epss_score is not None:
+            verdict = "🟢 낮음"
+        else:
+            verdict = "⚪ 측정 불가"
+
+        kev_str = "✅ 실제 공격 확인됨" if kev else "미등재"
+        epss_str = (
+            f"{epss_score:.3f} ({epss_percentile * 100:.1f} 퍼센타일)"
+            if epss_score is not None else "데이터 없음"
+        )
+        due_date_str = due_date if due_date else "해당 없음"
+
+    return (
+        f"| 항목 | 내용 |\n"
+        f"|--|--|\n"
+        f"| 종합 판정 | {verdict} |\n"
+        f"| CISA KEV | {kev_str} |\n"
+        f"| EPSS 점수 | {epss_str} |\n"
+        f"| CISA 조치 기한 | {due_date_str} |\n\n"
+    )
+
+
 def _build_canvas_group_md(group: List[Dict], idx: int) -> str:
     """동일 컴포넌트 취약점 묶음을 마크다운 섹션으로 변환."""
     first = group[0]
@@ -79,6 +127,18 @@ def _build_canvas_group_md(group: List[Dict], idx: int) -> str:
         cvss        = item.get("CVSS_Score", "")
         sev         = item.get("Severity", "")
         md += f"**{vuln}**  (CVSS {cvss} / {sev})\n\n{description}\n\n"
+
+    # CVE별 악용 위험
+    md += "### ⚠️ 악용 위험\n\n"
+    for item in group:
+        vuln = item.get("Vulnerability", "")
+        md += f"**{vuln}**\n\n"
+        md += _exploitation_risk_md(item)
+    md += (
+        f"> **CISA KEV**: 미국 사이버보안국(CISA)이 실제 공격에 악용된 것을 공식 확인한 취약점 목록입니다. 등재된 취약점은 즉각적인 조치가 필요합니다.\n"
+        f">\n"
+        f"> **EPSS**: 향후 30일 내 실제 공격에 악용될 확률을 0.0~1.0으로 예측하는 점수입니다. 백분위(percentile)는 전체 CVE 중 상대적 위험 순위를 나타냅니다.\n\n"
+    )
 
     # 조치 방안 (컴포넌트 공통)
     md += (

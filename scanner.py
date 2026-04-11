@@ -101,6 +101,7 @@ class BlackDuckScanner:
                             "Component": item.get("componentName"),
                             "Component_Version": item.get("componentVersionName", "Unknown"),
                             "Component_Version_Href": item.get("componentVersion", ""),
+                            "Ecosystem": item.get("externalNamespace", ""),
                             "Vulnerability": vwr.get("vulnerabilityName", "Unknown"),  # CVE-... or BDSA-...
                             "Last_Scanned": vwr.get("remediationCreatedAt", ""),
                             "Severity": vwr.get("severity", ""),
