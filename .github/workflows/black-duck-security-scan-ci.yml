@@ -47,5 +47,5 @@ jobs:
             --blackduck.trust.cert=true
             --detect.risk.report.pdf=true
             --detect.accuracy.required=NONE
-            --detect.project.group.name=InformationSecurity
+            --detect.project.group.name=IS
             --detect.project.version.name=${{ needs.get_tag.outputs.latest_tag }}
