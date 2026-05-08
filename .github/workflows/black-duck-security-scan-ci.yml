@@ -65,5 +65,7 @@ jobs:
             --blackduck.trust.cert=true
             --detect.risk.report.pdf=true
             --detect.accuracy.required=NONE
-            --detect.project.group.name=InformationSecurity
+            --detect.project.group.name=IS
             --detect.pip.path=uv
+            --detect.python.path=uv
+            --detect.pip.requirements.path=pyproject.toml
