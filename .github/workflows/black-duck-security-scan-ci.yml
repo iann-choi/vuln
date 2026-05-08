@@ -6,25 +6,7 @@ on:
       - main
 
 jobs:
-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      # 1. uv 설치 및 환경 설정
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true # 캐시 기능을 켜면 다음 빌드부터 엄청 빨라집니다
-
-      # 2. 파이썬 버전 고정 (uv가 관리하게 함)
-      - name: Set up Python
-        run: uv python install 3.11
-
-      # 3. uv를 이용한 패키지 설치 및 실행
-      - name: Install dependencies
-        run: uv sync # uv.lock 파일을 기준으로 환경을 동기화
-        
+  # 1. 최신 태그 정보 가져오기
   get_tag:
     runs-on: ubuntu-latest
     outputs:
@@ -34,27 +16,39 @@ build:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Get latest tag
         id: get_latest_tag
         run: |
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "latest_tag=${latest_tag}" >> $GITHUB_OUTPUT
 
+  # 2. Black Duck 스캔 실행
   blackduck-scan:
+    needs: [get_tag] # 태그 정보를 받아온 후 실행
+    runs-on: self-hosted
     permissions:
       contents: read
       pull-requests: write
-    needs: [get_tag]
-    runs-on: self-hosted
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
-      - name: Run Blackudck Scan
+
+      # uv 환경에서 블랙덕이 정확하게 스캔할 수 있도록 uv 설정 추가
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies with uv
+        run: uv sync # 블랙덕 Detect가 의존성 구조를 파악할 수 있게 환경 동기화
+
+      - name: Run Black Duck Scan
         id: black-duck-sca-scan
         uses: blackduck-inc/black-duck-security-scan@v2
         env:
+          # 환경 변수와 arguments를 함께 사용하여 프로젝트 이름 지정
           DETECT_PROJECT_NAME: ${{ github.event.repository.name }}
         with:
           blackducksca_url: ${{ secrets.BLACKDUCK_URL }}
@@ -62,9 +56,11 @@ build:
           detect_search_depth: 10
           blackducksca_scan_full: true
           detect_args: |
+            --detect.project.name=${{ github.event.repository.name }}
+            --detect.project.version.name=${{ needs.get_tag.outputs.latest_tag }}
             --detect.excluded.detector.types=GIT
             --blackduck.trust.cert=true
             --detect.risk.report.pdf=true
             --detect.accuracy.required=NONE
             --detect.project.group.name=InformationSecurity
-            --detect.project.version.name=${{ needs.get_tag.outputs.latest_tag }}
+            --detect.pip.path=uv
