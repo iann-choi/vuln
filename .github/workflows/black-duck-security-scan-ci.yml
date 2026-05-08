@@ -6,6 +6,25 @@ on:
       - main
 
 jobs:
+build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. uv 설치 및 환경 설정
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true # 캐시 기능을 켜면 다음 빌드부터 엄청 빨라집니다
+
+      # 2. 파이썬 버전 고정 (uv가 관리하게 함)
+      - name: Set up Python
+        run: uv python install 3.11
+
+      # 3. uv를 이용한 패키지 설치 및 실행
+      - name: Install dependencies
+        run: uv sync # uv.lock 파일을 기준으로 환경을 동기화
+        
   get_tag:
     runs-on: ubuntu-latest
     outputs:
