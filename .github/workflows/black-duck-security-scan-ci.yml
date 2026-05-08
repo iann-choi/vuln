@@ -1,0 +1,51 @@
+name: main-action
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  get_tag:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_tag: ${{ steps.get_latest_tag.outputs.latest_tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=${latest_tag}" >> $GITHUB_OUTPUT
+
+  blackduck-scan:
+    permissions:
+      contents: read
+      pull-requests: write
+    needs: [get_tag]
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Run Blackudck Scan
+        id: black-duck-sca-scan
+        uses: blackduck-inc/black-duck-security-scan@v2
+        env:
+          DETECT_PROJECT_NAME: ${{ github.event.repository.name }}
+        with:
+          blackducksca_url: ${{ secrets.BLACKDUCK_URL }}
+          blackducksca_token: ${{ secrets.BLACKDUCK_API_TOKEN }}
+          detect_search_depth: 10
+          blackducksca_scan_full: true
+          detect_args: |
+            --detect.excluded.detector.types=GIT
+            --blackduck.trust.cert=true
+            --detect.risk.report.pdf=true
+            --detect.accuracy.required=NONE
+            --detect.project.group.name=InformationSecurity
+            --detect.project.version.name=${{ needs.get_tag.outputs.latest_tag }}
